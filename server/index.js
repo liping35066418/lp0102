@@ -59,8 +59,9 @@ app.get('/api/bookings/check', (req, res) => {
     return res.json({ code: 1, message: '参数不完整' });
   }
 
-  const startTime = `${date} 00:00:00`;
-  const endTime = `${date} 23:59:59`;
+  const [year, month, day] = date.split('-').map(Number);
+  const startTime = new Date(year, month - 1, day, 0, 0, 0, 0).toISOString();
+  const endTime = new Date(year, month - 1, day, 23, 59, 59, 999).toISOString();
 
   const bookings = db.prepare(`
     SELECT id, start_time, end_time, status
@@ -95,7 +96,7 @@ function checkTimeConflict(venueId, startTime, endTime, excludeBookingId = null)
 }
 
 // 计算总费用
-function calculateTotal(venueId, startTime, endTime, equipments = [], playerCount = 1) {
+function calculateTotal(venueId, startTime, endTime, equipments = [], playerCount = 1, overrideVenuePrice = null, overrideEquipmentFee = null) {
   const venue = db.prepare('SELECT * FROM venues WHERE id = ?').get(venueId);
   if (!venue) return null;
 
@@ -103,25 +104,30 @@ function calculateTotal(venueId, startTime, endTime, equipments = [], playerCoun
   const end = new Date(endTime);
   const totalHours = Math.max(0.5, Math.ceil((end - start) / (1000 * 60 * 30)) * 0.5);
 
-  const venueFee = venue.price_per_hour * totalHours;
+  const venuePricePerHour = overrideVenuePrice != null ? overrideVenuePrice : venue.price_per_hour;
+  const venueFee = venuePricePerHour * totalHours;
 
   let equipmentFee = 0;
   const equipmentDetails = [];
-  for (const eq of equipments) {
-    const equip = db.prepare('SELECT * FROM equipments WHERE id = ?').get(eq.id);
-    if (equip && equip.status === 'active') {
-      const qty = eq.quantity || 1;
-      const subtotal = equip.price_per_hour * totalHours * qty;
-      equipmentFee += subtotal;
-      equipmentDetails.push({
-        id: equip.id,
-        name: equip.name,
-        category: equip.category,
-        price_per_hour: equip.price_per_hour,
-        quantity: qty,
-        hours: totalHours,
-        subtotal: subtotal,
-      });
+  if (overrideEquipmentFee != null) {
+    equipmentFee = overrideEquipmentFee;
+  } else {
+    for (const eq of equipments) {
+      const equip = db.prepare('SELECT * FROM equipments WHERE id = ?').get(eq.id);
+      if (equip && equip.status === 'active') {
+        const qty = eq.quantity || 1;
+        const subtotal = equip.price_per_hour * totalHours * qty;
+        equipmentFee += subtotal;
+        equipmentDetails.push({
+          id: equip.id,
+          name: equip.name,
+          category: equip.category,
+          price_per_hour: equip.price_per_hour,
+          quantity: qty,
+          hours: totalHours,
+          subtotal: subtotal,
+        });
+      }
     }
   }
 
@@ -132,6 +138,7 @@ function calculateTotal(venueId, startTime, endTime, equipments = [], playerCoun
   return {
     totalHours,
     venueFee,
+    venuePricePerHour,
     equipmentFee,
     equipmentDetails,
     discount,
@@ -145,9 +152,10 @@ function calculateGroupDiscount(playerCount, baseAmount) {
     SELECT * FROM group_discounts
     WHERE status = 'active'
       AND min_players <= ?
+      AND (max_players IS NULL OR max_players >= ?)
     ORDER BY min_players DESC
     LIMIT 1
-  `).get(playerCount);
+  `).get(playerCount, playerCount);
 
   if (!discounts) {
     return { id: null, name: null, type: null, value: 0, amount: 0 };
@@ -228,14 +236,22 @@ app.delete('/api/discounts/:id', (req, res) => {
 
 // 计算费用预览
 app.post('/api/calculate', (req, res) => {
-  const { venue_id, start_time, end_time, equipments, player_count } = req.body;
+  const { venue_id, start_time, end_time, equipments, player_count, venue_price, equipment_fee } = req.body;
 
   if (!venue_id || !start_time || !end_time) {
     return res.json({ code: 1, message: '参数不完整' });
   }
 
   const conflict = checkTimeConflict(venue_id, start_time, end_time);
-  const result = calculateTotal(venue_id, start_time, end_time, equipments || [], player_count || 1);
+  const result = calculateTotal(
+    venue_id,
+    start_time,
+    end_time,
+    equipments || [],
+    player_count || 1,
+    venue_price != null ? Number(venue_price) : null,
+    equipment_fee != null ? Number(equipment_fee) : null
+  );
 
   if (!result) {
     return res.json({ code: 1, message: '场地不存在' });

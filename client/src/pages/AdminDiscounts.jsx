@@ -125,6 +125,8 @@ function AdminDiscounts() {
         end_time: end.toISOString(),
         equipments: [],
         player_count: testPlayers,
+        venue_price: testVenueFee,
+        equipment_fee: testEquipFee,
       })
 
       if (res.code === 0) {
@@ -139,23 +141,27 @@ function AdminDiscounts() {
     if (discounts.length > 0) {
       runTest()
     }
-  }, [testPlayers, testDuration, testEquipFee])
+  }, [testPlayers, testDuration, testEquipFee, testVenueFee, discounts])
 
   const getApplicableDiscount = (playerCount) => {
     const applicable = discounts
-      .filter((d) => d.status === 'active' && d.min_players <= playerCount)
+      .filter(
+        (d) =>
+          d.status === 'active' &&
+          d.min_players <= playerCount &&
+          (d.max_players == null || d.max_players >= playerCount)
+      )
       .sort((a, b) => b.min_players - a.min_players)
     return applicable[0] || null
   }
 
-  const testDiscount = getApplicableDiscount(testPlayers)
-  const baseTotal = testVenueFee * testDuration + testEquipFee
-  const testDiscountAmount = testDiscount
-    ? testDiscount.discount_type === 'percentage'
-      ? baseTotal * (testDiscount.discount_value / 100)
-      : testDiscount.discount_value
-    : 0
-  const testFinalTotal = baseTotal - Math.min(testDiscountAmount, baseTotal)
+  const resultVenueFee = testResult ? testResult.venueFee : testVenueFee * testDuration
+  const resultEquipmentFee = testResult ? testResult.equipmentFee : testEquipFee
+  const resultSubtotal = resultVenueFee + resultEquipmentFee
+  const resultDiscount = testResult?.discount
+  const resultDiscountAmount = resultDiscount ? resultDiscount.amount : 0
+  const resultTotal = testResult ? testResult.totalAmount : resultSubtotal - resultDiscountAmount
+  const resultHours = testResult ? testResult.totalHours : testDuration
 
   return (
     <div className="admin-discounts">
@@ -269,24 +275,24 @@ function AdminDiscounts() {
           <div className="test-result">
             <h4 className="result-title">计算结果</h4>
             <div className="result-row">
-              <span>场地费 (¥{testVenueFee} × {testDuration}h)</span>
-              <span>¥{(testVenueFee * testDuration).toFixed(2)}</span>
+              <span>场地费 (¥{testVenueFee} × {resultHours}h)</span>
+              <span>¥{resultVenueFee.toFixed(2)}</span>
             </div>
             <div className="result-row">
               <span>装备费</span>
-              <span>¥{testEquipFee.toFixed(2)}</span>
+              <span>¥{resultEquipmentFee.toFixed(2)}</span>
             </div>
             <div className="result-row subtotal">
               <span>小计</span>
-              <span>¥{baseTotal.toFixed(2)}</span>
+              <span>¥{resultSubtotal.toFixed(2)}</span>
             </div>
-            {testDiscount && (
+            {resultDiscount && resultDiscount.id && (
               <div className="result-row discount">
-                <span>🏷️ {testDiscount.name}</span>
-                <span>-¥{testDiscountAmount.toFixed(2)}</span>
+                <span>🏷️ {resultDiscount.name}</span>
+                <span>-¥{resultDiscountAmount.toFixed(2)}</span>
               </div>
             )}
-            {!testDiscount && testPlayers > 0 && (
+            {(!resultDiscount || !resultDiscount.id) && testPlayers > 0 && (
               <div className="result-row no-discount">
                 <span>暂无适用优惠</span>
                 <span>-</span>
@@ -295,7 +301,7 @@ function AdminDiscounts() {
             <div className="result-divider"></div>
             <div className="result-total">
               <span>应付总金额</span>
-              <span className="total-amount">¥{testFinalTotal.toFixed(2)}</span>
+              <span className="total-amount">¥{resultTotal.toFixed(2)}</span>
             </div>
           </div>
 
