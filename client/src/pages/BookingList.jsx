@@ -4,24 +4,31 @@ import './BookingList.css'
 
 function BookingList() {
   const [bookings, setBookings] = useState([])
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [filterDate, setFilterDate] = useState('')
 
   useEffect(() => {
-    loadBookings()
+    loadData()
   }, [filterDate])
 
-  const loadBookings = async () => {
+  const loadData = async () => {
     setLoading(true)
     try {
       const params = {}
       if (filterDate) params.date = filterDate
-      const res = await api.getBookings(params)
-      if (res.code === 0) {
-        setBookings(res.data)
+      const [bookingsRes, statsRes] = await Promise.all([
+        api.getBookings(params),
+        api.getBookingStats(params),
+      ])
+      if (bookingsRes.code === 0) {
+        setBookings(bookingsRes.data)
+      }
+      if (statsRes.code === 0) {
+        setStats(statsRes.data)
       }
     } catch (err) {
-      console.error('加载预约列表失败', err)
+      console.error('加载数据失败', err)
     } finally {
       setLoading(false)
     }
@@ -33,10 +40,23 @@ function BookingList() {
       const res = await api.cancelBooking(id)
       if (res.code === 0) {
         alert('取消成功')
-        loadBookings()
+        loadData()
       }
     } catch (err) {
       console.error('取消预约失败', err)
+    }
+  }
+
+  const handleComplete = async (id) => {
+    if (!confirm('确定要标记为已完成吗？')) return
+    try {
+      const res = await api.completeBooking(id)
+      if (res.code === 0) {
+        alert('已标记完成')
+        loadData()
+      }
+    } catch (err) {
+      console.error('标记完成失败', err)
     }
   }
 
@@ -77,6 +97,32 @@ function BookingList() {
           )}
         </div>
       </div>
+
+      {stats && (
+        <div className="stats-overview">
+          <div className="stat-card card">
+            <div className="stat-icon icon-bookings">📋</div>
+            <div className="stat-content">
+              <div className="stat-label">预约总数</div>
+              <div className="stat-value">{stats.total_count}</div>
+            </div>
+          </div>
+          <div className="stat-card card">
+            <div className="stat-icon icon-revenue">💰</div>
+            <div className="stat-content">
+              <div className="stat-label">有效预约总金额</div>
+              <div className="stat-value stat-money">¥{stats.valid_total_amount?.toFixed(2)}</div>
+            </div>
+          </div>
+          <div className="stat-card card">
+            <div className="stat-icon icon-average">📊</div>
+            <div className="stat-content">
+              <div className="stat-label">平均每单金额</div>
+              <div className="stat-value stat-money">¥{stats.avg_amount?.toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">加载中...</div>
@@ -122,14 +168,24 @@ function BookingList() {
                   <span className="total-label">总金额</span>
                   <span className="total-price">¥{booking.total_amount?.toFixed(2)}</span>
                 </div>
-                {booking.status === 'confirmed' && (
-                  <button
-                    className="btn btn-default btn-cancel"
-                    onClick={() => handleCancel(booking.id)}
-                  >
-                    取消预约
-                  </button>
-                )}
+                <div className="booking-actions">
+                  {booking.status === 'confirmed' && (
+                    <>
+                      <button
+                        className="btn btn-primary btn-complete"
+                        onClick={() => handleComplete(booking.id)}
+                      >
+                        标记完成
+                      </button>
+                      <button
+                        className="btn btn-default btn-cancel"
+                        onClick={() => handleCancel(booking.id)}
+                      >
+                        取消预约
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}

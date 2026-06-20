@@ -4,6 +4,7 @@ import './AdminDiscounts.css'
 
 function AdminDiscounts() {
   const [discounts, setDiscounts] = useState([])
+  const [bookingStats, setBookingStats] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [editingDiscount, setEditingDiscount] = useState(null)
   const [formData, setFormData] = useState({
@@ -22,6 +23,7 @@ function AdminDiscounts() {
 
   useEffect(() => {
     loadDiscounts()
+    loadBookingStats()
   }, [])
 
   const loadDiscounts = async () => {
@@ -32,6 +34,17 @@ function AdminDiscounts() {
       }
     } catch (err) {
       console.error('加载优惠配置失败', err)
+    }
+  }
+
+  const loadBookingStats = async () => {
+    try {
+      const res = await api.getBookingStats({})
+      if (res.code === 0) {
+        setBookingStats(res.data)
+      }
+    } catch (err) {
+      console.error('加载预约统计失败', err)
     }
   }
 
@@ -171,6 +184,43 @@ function AdminDiscounts() {
           + 新增优惠
         </button>
       </div>
+
+      {bookingStats && (
+        <div className="business-overview card">
+          <h3 className="section-title">📈 经营概览</h3>
+          <div className="overview-stats">
+            <div className="overview-stat stat-revenue">
+              <div className="stat-icon-wrap">💰</div>
+              <div className="stat-info">
+                <div className="stat-name">累计有效收入</div>
+                <div className="stat-num">¥{bookingStats.valid_total_amount?.toFixed(2)}</div>
+              </div>
+            </div>
+            <div className="overview-divider"></div>
+            <div className="overview-stat stat-confirmed">
+              <div className="stat-icon-wrap">✅</div>
+              <div className="stat-info">
+                <div className="stat-name">已确认</div>
+                <div className="stat-num">{bookingStats.confirmed_count}</div>
+              </div>
+            </div>
+            <div className="overview-stat stat-completed">
+              <div className="stat-icon-wrap">🎉</div>
+              <div className="stat-info">
+                <div className="stat-name">已完成</div>
+                <div className="stat-num">{bookingStats.completed_count}</div>
+              </div>
+            </div>
+            <div className="overview-stat stat-cancelled">
+              <div className="stat-icon-wrap">❌</div>
+              <div className="stat-info">
+                <div className="stat-name">已取消</div>
+                <div className="stat-num">{bookingStats.cancelled_count}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="admin-grid">
         <div className="discount-list-card card">

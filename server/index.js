@@ -388,6 +388,49 @@ app.get('/api/bookings', (req, res) => {
   res.json({ code: 0, data: bookings });
 });
 
+// 预约统计
+app.get('/api/bookings/statistics', (req, res) => {
+  const { date, venue_id } = req.query;
+  let sql = `
+    SELECT
+      COUNT(*) as total_count,
+      SUM(CASE WHEN status != 'cancelled' THEN total_amount ELSE 0 END) as valid_total_amount,
+      SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed_count,
+      SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count,
+      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+      SUM(CASE WHEN status != 'cancelled' THEN 1 ELSE 0 END) as valid_count
+    FROM bookings
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (date) {
+    sql += ' AND DATE(start_time) = ?';
+    params.push(date);
+  }
+  if (venue_id) {
+    sql += ' AND venue_id = ?';
+    params.push(venue_id);
+  }
+
+  const stats = db.prepare(sql).get(...params);
+  const validTotalAmount = stats.valid_total_amount || 0;
+  const validCount = stats.valid_count || 0;
+
+  res.json({
+    code: 0,
+    data: {
+      total_count: stats.total_count || 0,
+      valid_total_amount: validTotalAmount,
+      valid_count: validCount,
+      avg_amount: validCount > 0 ? validTotalAmount / validCount : 0,
+      confirmed_count: stats.confirmed_count || 0,
+      completed_count: stats.completed_count || 0,
+      cancelled_count: stats.cancelled_count || 0,
+    },
+  });
+});
+
 // 预约详情
 app.get('/api/bookings/:id', (req, res) => {
   const booking = db.prepare(`
@@ -418,6 +461,15 @@ app.put('/api/bookings/:id/cancel', (req, res) => {
     return res.json({ code: 1, message: '预约不存在' });
   }
   res.json({ code: 0, message: '取消成功' });
+});
+
+// 标记完成
+app.put('/api/bookings/:id/complete', (req, res) => {
+  const result = db.prepare("UPDATE bookings SET status = ? WHERE id = ? AND status = 'confirmed'").run('completed', req.params.id);
+  if (result.changes === 0) {
+    return res.json({ code: 1, message: '预约不存在或状态不允许完成' });
+  }
+  res.json({ code: 0, message: '已标记完成' });
 });
 
 app.listen(PORT, () => {
