@@ -1,0 +1,147 @@
+.venue-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-title h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.page-title p {
+  color: #666;
+  font-size: 14px;
+}
+
+.venue-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.map-wrapper {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.venue-svg {
+  width: 100%;
+  height: auto;
+}
+
+.venue-rect {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.venue-rect:hover rect {
+  filter: brightness(0.95);
+}
+
+.venue-rect.selected rect {
+  filter: brightness(1);
+}
+
+.venue-info {
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.venue-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.venue-info-detail {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #666;
+}
+
+.end-time-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+}
+
+.conflict-warning {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  color: #ff4d4f;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.available-info {
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #52c41a;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.next-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+
+.today-bookings {
+  margin-top: 0;
+}
+
+.empty-tip {
+  color: #999;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.booking-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.slot-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff1f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.slot-time {
+  color: #ff4d4f;
+}
+
+.slot-status {
+  color: #ff7875;
+  font-size: 12px;
+}
